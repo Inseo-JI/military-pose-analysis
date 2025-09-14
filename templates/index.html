@@ -22,7 +22,7 @@
     <h1>군 장병 자세 분석 시스템 v3.0</h1>
     <a href="/history">분석 기록 보기 →</a>
     <hr>
-
+    
     <div class="container">
         <div class="upload-form">
             <h2>사진 업로드</h2>
@@ -41,9 +41,8 @@
     </div>
 
 <script>
-const EXPERT_KNOWLEDGE_BASE = {{ EXPERT_KNOWLEDGE_BASE|tojson }};
-const EXERCISE_PRESCRIPTION_DB = {{ EXERCISE_PRESCRIPTION_DB|tojson }};
-
+const EXPERT_KNOWLEDGE_BASE = {{ EXPERT_KNOWLEDGE_BASE|tojson|safe }};
+const EXERCISE_PRESCRIPTION_DB = {{ EXERCISE_PRESCRIPTION_DB|tojson|safe }};
 const uploadForm = document.getElementById('uploadForm');
 const submitBtn = document.getElementById('submitBtn');
 const resultDisplay = document.getElementById('result-content');
@@ -53,7 +52,7 @@ uploadForm.addEventListener('submit', async (e) => {
     submitBtn.disabled = true;
     submitBtn.value = "분석 중...";
     resultDisplay.innerHTML = `
-        <p>서버로 파일을 전송하고 분석을 시작합니다... (최대 1분 소요)</p>
+        <p>서버로 파일을 전송하고 분석을 시작합니다... (최대 1~2분 소요)</p>
         <div class="loader"></div>
     `;
 
@@ -66,15 +65,9 @@ uploadForm.addEventListener('submit', async (e) => {
             body: formData
         });
 
-        if (!response.ok) {
-            throw new Error('파일 업로드 실패');
-        }
-
+        if (!response.ok) { throw new Error('파일 업로드 실패'); }
         const data = await response.json();
-        const taskId = data.task_id;
-
-        checkStatus(taskId);
-
+        checkStatus(data.task_id);
     } catch (error) {
         showError('업로드 중 오류 발생: ' + error.message);
     }
@@ -93,7 +86,6 @@ function checkStatus(taskId) {
                 clearInterval(interval);
                 showError('분석 실패: ' + data.error);
             }
-            // '분석 중'이면 아무것도 하지 않고 다음 체크를 기다림
         } catch (error) {
             clearInterval(interval);
             showError('결과 확인 중 오류 발생: ' + error.message);
@@ -104,11 +96,13 @@ function checkStatus(taskId) {
 function displayResults(result) {
     let html = '';
     if (result.visualized_image_url) {
-        html += `<img src="/static/uploads/${result.visualized_image_url.replace('vis_', '')}" alt="원본 이미지">`;
-        html += `<img src="/static/${result.visualized_image_url}" alt="분석 결과 이미지">`;
+        // Render.com의 파일 시스템에 맞게 경로를 재구성합니다.
+        const originalImagePath = `/static/uploads/${result.path.split('/').pop()}`;
+        const analyzedImagePath = `/static/${result.visualized_image_url}`;
+        html += `<img src="${originalImagePath}" alt="원본 이미지">`;
+        html += `<img src="${analyzedImagePath}" alt="분석 결과 이미지">`;
     }
-
-    // (이하 HTML 생성 로직은 이전과 동일)
+    
     html += `
         <div class="result-box">
             <h3>[일반 모드]</h3>
@@ -123,10 +117,35 @@ function displayResults(result) {
             </p>
         </div>
         <div class="result-box">
-            <h3>[전문가 모드] 상세 소견</h3>
-    `;
-    // ... (전문가 모드, 운동 처방 HTML 생성 로직)
+            <h3>[전문가 모드] 상세 소견</h3>`;
 
+    ['back', 'knee', 'neck'].forEach(part => {
+        const diag = result[part + '_diagnosis'];
+        const pattern = result[part + '_pattern'] || '기본';
+        if ((diag === "위험" || diag === "주의") && EXPERT_KNOWLEDGE_BASE[part]?.[diag]?.[pattern]) {
+            html += `
+                <b>--- [${part.toUpperCase()}] ---</b>
+                <p>▶ 진단 패턴: ${pattern}</p>
+                <p>- 진단명: ${EXPERT_KNOWLEDGE_BASE[part][diag][pattern]['진단명']}</p>
+            `;
+        }
+    });
+    
+    html += `</div><div class="result-box"><h3>[개인 맞춤형] 교정 운동 처방</h3>`;
+
+    ['back', 'knee', 'neck'].forEach(part => {
+        const diag = result[part + '_diagnosis'];
+        const pattern = result[part + '_pattern'] || '기본';
+        if ((diag === "위험" || diag === "주의") && EXERCISE_PRESCRIPTION_DB[part]?.[pattern]) {
+            html += `<b>--- [${part.toUpperCase()} 개선] ---</b>`;
+            EXERCISE_PRESCRIPTION_DB[part][pattern].forEach(ex => {
+                html += `<p>- 추천 운동: ${ex['name']}</p>`;
+            });
+        }
+    });
+
+    html += `</div>`;
+    
     resultDisplay.innerHTML = html;
     submitBtn.disabled = false;
     submitBtn.value = "분석 시작";
