@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#007bff"/>
+    <meta charset="UTF-8">
+    <title>분석 기록</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 2em auto; line-height: 1.6; color: #333; }
+        h1, h2 { color: #111; border-bottom: 2px solid #f0f0f0; padding-bottom: 0.3em; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin-top: 2em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .chart-container { width:100%; margin-top: 2em; padding: 1em; border: 1px solid #ddd; border-radius: 8px; }
+    </style>
+</head>
+
+<body>
+    <h1>분석 기록 및 추적 관찰</h1>
+    <a href="/">← 분석 페이지로 돌아가기</a>
+
+    <div class="chart-container">
+        <h2>점수 변화 그래프</h2>
+        <canvas id="scoreChart"></canvas>
+    </div>
+
+    <h2>상세 기록</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>분석일시</th>
+                <th>파일명</th>
+                <th>부하 점수</th>
+                <th>허리</th>
+                <th>무릎</th>
+                <th>목</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records|reverse %}
+            <tr>
+                <td>{{ record[0] }}</td>
+                <td>{{ record[1] }}</td>
+                <td>{{ '%.1f'|format(record[2]|float) if record[2] != 'N/A' else 'N/A' }}</td>
+                <td>{{ record[3] }}</td>
+                <td>{{ record[4] }}</td>
+                <td>{{ record[5] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        const records = {{ records|tojson }};
+        const labels = records.map(row => new Date(row[0]).toLocaleDateString());
+        const data = records.map(row => parseFloat(row[2]));
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '근골격 부하 점수 변화',
+                    data: data,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: '점수' }
+                    },
+                    x: {
+                        title: { display: true, text: '날짜' }
+                    }
+                }
+            }
+        });
+    </script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }, err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

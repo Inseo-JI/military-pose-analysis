@@ -1,0 +1,7 @@
+venv/
+uploads/
+static/
+*.json
+history.csv
+__pycache__/
+*.pyc
