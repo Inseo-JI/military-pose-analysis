@@ -6,7 +6,7 @@ WORKDIR /app
 
 # 3. 필요한 시스템 라이브러리 설치 (OpenCV, MediaPipe 구동용)
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,5 +17,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 5. 프로젝트 파일 전체 복사
 COPY . .
 
-# 6. 서버 실행
+# 6. 서버 실행 (포트를 10000번으로 지정)
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--workers", "1"]
