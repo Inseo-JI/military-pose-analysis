@@ -1,5 +1,6 @@
 import cv2
-import mediapipe as mp
+import mediapipe_lite as mp
+from mediapipe_lite.utilities.drawing import drawings as mp_drawing
 import numpy as np
 import sys
 import json
@@ -75,10 +76,11 @@ def calculate_load_score(analysis, rucksack_weight_kg):
     weight_factor = 1.5 if rucksack_weight_kg >= 25 else (1.2 if rucksack_weight_kg >= 15 else 1.0)
     return min(100, ((base_score * weight_factor) / 3.0) * 100)
 
-def visualize_results(result):
+ddef visualize_results(result):
     image = result['image'].copy()
     if result.get('pose_landmarks'):
-        mp.solutions.drawing_utils.draw_landmarks(image, result['pose_landmarks'], mp.solutions.pose.POSE_CONNECTIONS)
+        # mp.solutions.drawing_utils.draw_landmarks(...)  <- 이 부분을
+        mp_drawing.draw_landmarks(image, result['pose_landmarks'], mp.solutions.pose.POSE_CONNECTIONS) # <- 이렇게 수정
     load_score = result.get('load_score')
     if load_score is not None:
         score_color = (0, 255, 0) if load_score <= 40 else ((0, 255, 255) if load_score <= 70 else (0, 0, 255))
