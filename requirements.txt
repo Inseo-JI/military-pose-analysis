@@ -1,8 +1,5 @@
 flask==2.3.3
-mediapipe-lite
-opencv-python==4.8.0.76
-tf-lite-runtime
-numpy==1.26.4
-matplotlib
-werkzeug
+mediapipe
+opencv-python-headless
+numpy
 gunicorn
